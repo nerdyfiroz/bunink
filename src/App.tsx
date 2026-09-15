@@ -21,7 +21,9 @@ export default function App() {
 
   const [isAdminOpen, setIsAdminOpen] = useState<boolean>(() => {
     if (typeof window !== 'undefined') {
+      const cleanPath = window.location.pathname.toLowerCase().replace(/\/+$/, '');
       return (
+        cleanPath === '/admin' ||
         window.location.hash === '#admin' ||
         window.location.search.includes('admin=true')
       );
@@ -116,11 +118,18 @@ export default function App() {
     }
   }, [darkMode]);
 
-  // Listen for hash changes (#admin) or keyboard shortcut (Ctrl+Shift+A or Alt+A)
+  // Listen for route changes (/admin, #admin), browser navigation (popstate), or keyboard shortcut (Ctrl+Shift+A or Alt+A)
   useEffect(() => {
-    const handleHash = () => {
-      if (window.location.hash === '#admin') {
+    const checkAdminRoute = () => {
+      const cleanPath = window.location.pathname.toLowerCase().replace(/\/+$/, '');
+      if (
+        cleanPath === '/admin' ||
+        window.location.hash === '#admin' ||
+        window.location.search.includes('admin=true')
+      ) {
         setIsAdminOpen(true);
+      } else {
+        setIsAdminOpen(false);
       }
     };
 
@@ -130,14 +139,24 @@ export default function App() {
         (e.altKey && (e.key === 'a' || e.key === 'A'))
       ) {
         e.preventDefault();
-        setIsAdminOpen((prev) => !prev);
+        setIsAdminOpen((prev) => {
+          const next = !prev;
+          if (next) {
+            window.history.pushState(null, '', '/admin' + window.location.search);
+          } else {
+            window.history.pushState(null, '', '/' + window.location.search);
+          }
+          return next;
+        });
       }
     };
 
-    window.addEventListener('hashchange', handleHash);
+    window.addEventListener('popstate', checkAdminRoute);
+    window.addEventListener('hashchange', checkAdminRoute);
     window.addEventListener('keydown', handleKeyDown);
     return () => {
-      window.removeEventListener('hashchange', handleHash);
+      window.removeEventListener('popstate', checkAdminRoute);
+      window.removeEventListener('hashchange', checkAdminRoute);
       window.removeEventListener('keydown', handleKeyDown);
     };
   }, []);
@@ -389,12 +408,18 @@ export default function App() {
 
   const openAdminPortal = () => {
     setIsAdminOpen(true);
+    if (window.location.pathname.toLowerCase().replace(/\/+$/, '') !== '/admin') {
+      window.history.pushState(null, '', '/admin' + window.location.search);
+    }
   };
 
   const closeAdminPortal = () => {
     setIsAdminOpen(false);
     if (window.location.hash === '#admin') {
       window.history.replaceState(null, '', window.location.pathname + window.location.search);
+    }
+    if (window.location.pathname.toLowerCase().replace(/\/+$/, '') === '/admin') {
+      window.history.pushState(null, '', '/' + window.location.search);
     }
   };
 
